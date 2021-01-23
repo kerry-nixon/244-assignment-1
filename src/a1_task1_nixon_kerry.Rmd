@@ -1,0 +1,80 @@
+---
+title: "Sierra Amphibian Abundance"
+author: "Kerry Nixon"
+date: "1/23/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(janitor)
+
+# For Part 1 (PCA)
+library(ggfortify) # For PCA biplot
+library(palmerpenguins)
+
+# For Part 2 (ggplot customization)
+library(readxl)
+library(gghighlight) # For useful highlighting
+library(lubridate) # For easier dates & times
+library(plotly) # Interactive graphs
+
+# For Part 3 (compound figures)
+library(patchwork)
+```
+
+
+```{r}
+# Importing data and wrangling
+
+## read in data - data is tidy and headers are already in lower_snake_case
+sierra_amphibians <- read_excel("data/sierra_amphibians.xlsx")
+
+## filtering for Rana muscosa "RAMU" species and excluding "EggMass" life stage
+ra_mu <- sierra_amphibians %>% 
+  filter(amphibian_species == "RAMU",
+         amphibian_life_stage != "EggMass") %>% 
+  mutate(survey_date = ymd(survey_date)) %>% 
+  mutate(year = year(survey_date))
+
+## saving summary of Yellow-Legged Mountain Frog counts by life stage and year
+stg_yr_sum <- ra_mu %>% 
+  group_by(year, amphibian_life_stage) %>% 
+  summarise(count = sum(amphibian_number))
+
+```
+
+
+```{r}
+# Creating graph of counts from summary
+
+viz_1 <- ggplot(data = stg_yr_sum, aes(fill = amphibian_life_stage, y = amphibian_life_stage, x = count)) +
+  geom_bar(position = "dodge", stat = "identity") +
+  facet_wrap(~year, scales = "free_x")
+
+viz_2 <- ggplot(data = stg_yr_sum, aes(x = year, y = count)) +
+  geom_point(aes(color = amphibian_life_stage)) +
+  scale_x_continuous(n.breaks = 10)
+
+viz_3 <- ggplot(data = stg_yr_sum, aes(fill = amphibian_life_stage, x = year, y = count)) +
+  geom_bar(position = "stack", stat = "identity") +
+  scale_x_continuous(n.breaks = 10) +
+  scale_fill_manual(values = c("#76448A","#D4AC0D", "#1F618D")) +
+  labs(x = "\nYear\n",
+       y = "\nNumber of Specimens Counted\n",
+       fill = "Life Stage") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+  
+ggplotly(viz_3)
+```
+
+
+
+
+
+
+
+
