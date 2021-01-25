@@ -1,0 +1,44 @@
+---
+title: "Demographic Shift in Swizterland PCA"
+author: "Kerry Nixon"
+date: "1/24/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(janitor)
+library(stringr)
+library(ggfortify)
+```
+
+```{r}
+swiss_df <- swiss %>% 
+  clean_names() %>% 
+  rownames_to_column("province")
+
+swiss_PCA <- swiss_df %>% 
+  select(!province) %>%
+  select(!infant_mortality) %>% 
+  prcomp()
+
+# Variance explained by each PC
+screeplot(swiss_PCA, type = "lines")
+
+# See the loadings (weighting for each principal component)
+swiss_PCA$rotation
+
+autoplot(swiss_PCA,
+         loadings = TRUE,
+         loadings.label = TRUE,
+         colour = "palegreen3",
+         loadings.colour = "black",
+         loadings.label.colour = "black",
+         loadings.label.repel = TRUE,
+         loadings.label.vjust = -0.5
+         ) +
+  theme_bw() 
+```
+
