@@ -5,15 +5,16 @@ date: "1/23/2021"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(here)
 library(janitor)
+library(ggrepel)
+library(ggExtra)
 
 # For Part 1 (PCA)
 library(ggfortify) # For PCA biplot
-library(palmerpenguins)
 
 # For Part 2 (ggplot customization)
 library(readxl)
@@ -27,53 +28,102 @@ library(patchwork)
 
 
 ```{r}
-# Importing data and wrangling
+# Importing data
 
 ## read in data - data is tidy and headers are already in lower_snake_case
-sierra_amphibians <- read_excel("data/sierra_amphibians.xlsx")
-
-## filtering for Rana muscosa "RAMU" species and excluding "EggMass" life stage
-ra_mu <- sierra_amphibians %>% 
-  filter(amphibian_species == "RAMU",
-         amphibian_life_stage != "EggMass") %>% 
-  mutate(survey_date = ymd(survey_date)) %>% 
-  mutate(year = year(survey_date))
-
-## saving summary of Yellow-Legged Mountain Frog counts by life stage and year
-stg_yr_sum <- ra_mu %>% 
-  group_by(year, amphibian_life_stage) %>% 
-  summarise(count = sum(amphibian_number))
+sierra_amphibians <- read_excel(here("data", "sierra_amphibians.xlsx"), na = "NA")
 
 ```
 
 
 ```{r}
-# Creating graph of counts from summary
+# Graph 1: Wrangling Yellow-Legged Mountain frogs, updating date format, pulling year
 
+## subset - filtering for Rana muscosa "RAMU" species and excluding "EggMass" life stage
+ra_mu <- sierra_amphibians %>% 
+  filter(amphibian_species == "RAMU",
+         amphibian_life_stage != "EggMass") %>% 
+  mutate(survey_date = ymd(survey_date)) %>% 
+  mutate(year = year(survey_date)) %>% 
+  drop_na(amphibian_number)
+
+## saving summary of Yellow-Legged Mountain Frog counts by life stage and year subset
+stg_yr_sum <- ra_mu %>% 
+  group_by(year, amphibian_life_stage) %>% 
+  summarise(count = sum(amphibian_number))
+```
+
+
+```{r}
+# Graph 1: DataViz - Creating graph of counts from summary
+
+## trying out different data visualizations for this data subset
 viz_1 <- ggplot(data = stg_yr_sum, aes(fill = amphibian_life_stage, y = amphibian_life_stage, x = count)) +
   geom_bar(position = "dodge", stat = "identity") +
   facet_wrap(~year, scales = "free_x")
 
 viz_2 <- ggplot(data = stg_yr_sum, aes(x = year, y = count)) +
-  geom_point(aes(color = amphibian_life_stage)) +
-  scale_x_continuous(n.breaks = 10)
+  geom_line(aes(color = amphibian_life_stage)) +
+  geom_point(size = 0.5) +
+  scale_x_continuous(n.breaks = 10) +
+  theme_bw()
+viz_2
 
+## This is the better of the graphs for the summary subset
 viz_3 <- ggplot(data = stg_yr_sum, aes(fill = amphibian_life_stage, x = year, y = count)) +
   geom_bar(position = "stack", stat = "identity") +
-  scale_x_continuous(n.breaks = 10) +
+  scale_x_continuous(n.breaks = 10) + 
+  scale_y_continuous(breaks = seq(0,185000,25000), expand = expansion(mult = c(0, .1))) +
   scale_fill_manual(values = c("#76448A","#D4AC0D", "#1F618D")) +
   labs(x = "\nYear\n",
        y = "\nNumber of Specimens Counted\n",
        fill = "Life Stage") +
-  theme_minimal() +
-  theme(legend.position = "bottom")
-  
-ggplotly(viz_3)
+  theme_bw() +
+  removeGridX() +
+  theme(legend.position = c(0.2,0.7),
+        legend.background = element_rect(fill = "white",
+                                         size = 0.5,
+                                         linetype = "solid",
+                                         color = "black"))
+
+## converting to interactive plot to make it easier to see counts for each stage and year
+viz_3_interact <- ggplotly(viz_3)
+```
+
+```{r}
+# Graph 2: Wrangling for top 5 lakes with highest YLMF counts over study period
+## subset - removing "Tadpole" life stage, summarizing count by lake id
+top_5 <- ra_mu %>% 
+  filter(amphibian_life_stage != "Tadpole") %>% 
+  mutate(lake_id_lbl = sub("^", "Lake ", lake_id)) %>% 
+  drop_na(amphibian_number) %>% 
+  group_by(lake_id_lbl) %>% 
+  summarise(count = sum(amphibian_number)) %>% 
+  slice_max(count, n = 5)
 ```
 
 
+```{r}
+# Graph 2: DataViz - Creating a column graph of 5 lakes with highest YLMF counts
 
+top_5_viz <- ggplot(data = top_5, aes(x = fct_reorder(lake_id_lbl, -count), y = count)) +
+  geom_col(fill = "#85C1E9",
+           show.legend = FALSE) +
+  scale_y_continuous(expand = expansion(mult = c(0, .1))) +
+  labs(x = "\nLake Site Number\n",
+       y = "\nNumber of Specimens Counted\n") +
+    theme_bw()
 
+```
+
+```{r, fig.width = 12}
+# Putting the two plots together with `patchwork`
+
+graph_total <- (viz_3 | top_5_viz) +
+  plot_annotation(tag_levels = "A", tag_suffix = ".")
+graph_total
+
+```
 
 
 
