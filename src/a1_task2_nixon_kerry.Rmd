@@ -1,11 +1,11 @@
 ---
-title: "Demographic Shift in Swizterland PCA"
+title: "Exploring the Demographic Shift in 1888 French-Speaking Switzerland"
 author: "Kerry Nixon"
 date: "1/24/2021"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(here)
@@ -14,22 +14,43 @@ library(stringr)
 library(ggfortify)
 ```
 
+## Introduction
+
+This report explores a data set included in `base R` that contains some socio-economic and demographic data for each of the 47 French-speaking provinces of Switzerland in 1888. In the latter 1800's Switzerland was undergoing the 'demographic transition', a phenomenon of decreasing death rates followed by decreasing birth rates that results in increased population and that generally occurs as a country undergoes industrial and economic development. This demographic transition occurs over time, and not always uniformly across a country or populace. This report will use a PCA biplot to examine the relationships between the demographic and socio-economic variables listed below in relation to observations recorded for the 47 French-speaking provinces in Switzerland during this time period. 
+
+**Variables and Definitions:**
+
+-	Fertility: Ig, ‘common standardized fertility measure’
+-	Agriculture: % of males involved in agriculture as occupation
+-	Examination:	% draftees receiving highest mark on army examination
+-	Education:	% education beyond primary school for draftees.
+-	Catholic:	% ‘catholic’ (as opposed to ‘protestant’).
+-	Infant Mortality:	% live births who live less than 1 year.
+
+All variables but ‘Fertility’ give proportions of the population. All variables were scaled (0-100) and so further scaling was not used during the data wrangling and analysis so as to avoid spuriously re-weighting the variables' effect on variance.
+
+
+### PCA Biplot of Demographic Factors in French-Speaking Swiss Provinces in 1888
+
 ```{r}
+# Data Wrangling - making a subset and tidying data
 swiss_df <- swiss %>% 
   clean_names() %>% 
   rownames_to_column("province")
 
+# PCA - not scaling do to observation consistency of unit type and previous scaling of data
 swiss_PCA <- swiss_df %>% 
   select(!province) %>%
   select(!infant_mortality) %>% 
   prcomp()
 
 # Variance explained by each PC
-screeplot(swiss_PCA, type = "lines")
+# swiss_scree <- screeplot(swiss_PCA, type = "lines")
 
-# See the loadings (weighting for each principal component)
-swiss_PCA$rotation
+# Checking the loadings (weighting for each principal component)
+swiss_loads <- swiss_PCA$rotation
 
+# Data Visualization: Generating the PCA Biplot
 autoplot(swiss_PCA,
          loadings = TRUE,
          loadings.label = TRUE,
@@ -42,3 +63,22 @@ autoplot(swiss_PCA,
   theme_bw() 
 ```
 
+**Figure 1.** This PCA biplot depicts a two dimensional representation of the relationship betweenthe demographic variables and historic observations recorded for 47 french-speaking provinces in Switzerland in 1888. The provinces are represented by green points and the variables are depicted as black arrows with labels. The size and direction of the arrows indicate loading and level of correlation to other variables. Point location indicated correlation with independent variables. This biplot captures 93.58% of variance between observed values using PC1 and PC2. This captures enough of the variance that the relationships between the variables can be interpreted with reasonable confidence in correlation. Infant mortality was fairly consistent across all provinces, its effect (loading) on the variance in the data was very low, and it did not have strong correlations with other variables, and so it was excluded from the biplot.
+
+
+### Analysis
+
+- Catholicism and Agricultural Participation were the two variables accounting for the greatest amount of variance in the data
+- There are two distinct clusters of points, representing provinces, that are arranged oppositionally along the eigenvector (PC1) which is heavily loaded by the "Catholic" variable. This indicates that provinces tend to have a large percentage of the population that is Catholic or not-Catholic, a.k.a Protestant, and so this variable accounts for a large amount of the variance in the data.
+- Percentage of the population working in agriculture and percentage of population with primary education are strongly negatively correlated. This makes intuitive sense, as a country develops, the percentage of the population working in Agriculture gets smaller as people become more educated or work in other sectors.
+- Catholicism and fertility are moderatly correlated. Social norms in the Catholic tradition may have contributed to this trend, but further study would need to be done to attribute causation.
+- Fertility and Agriculture are moderately positively correlated, this may makes sense as farm families necesitated the labor of many children. 
+- Fertility and Education are moderately negatively correlated, this could also correspond with trends expected during a demographic transition where education is correlated with decreased fertility.
+- Examination and Education are positively correlated, this makes sense as provinces with a higher percentage of army draftees acheiving a primary education would logically have a higher number of draftees scoring top marks on army examinations.
+
+
+**Data Citation:** Project “16P5”, pages 549–551 in Mosteller, F. and Tukey, J. W. (1977) Data Analysis and Regression: A Second Course in Statistics. Addison-Wesley, Reading Mass.
+indicating their source as “Data used by permission of Franice van de Walle. Office of Population Research, Princeton University, 1976. Unpublished data assembled under NICHD contract number No 1-HD-O-2077.”
+
+Files for all 182 districts in 1888 and other years have been available at:
+https://opr.princeton.edu/archive/pefp/switz.aspx
